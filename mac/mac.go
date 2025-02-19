@@ -38,7 +38,7 @@ func init() {
 
 func main() {
 	fmt.Println("Connecting to db....")
-	dsn := "host=localhost user=moqui password=moqui dbname=gorm port=5432 sslmode=disable TimeZone=Europe/Rome"
+	dsn := "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable TimeZone=Europe/Rome"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	//db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
@@ -69,15 +69,16 @@ func main() {
 	go http.ListenAndServe(":8080", m)
 	go m.Run()
 	fmt.Println("Ready macaron")
+	go jobManager(db)
 
 	main1(db)
-	jobManager(db)
 
 }
 
 var s gocron.Scheduler = nil
 
 func jobManager(db *gorm.DB) {
+	fmt.Println("Job Manager")
 
 	if s == nil {
 		// create a scheduler
@@ -117,38 +118,42 @@ func jobManager(db *gorm.DB) {
 		//time.Sleep(time.Second)
 		nextMs := int(time.Now().UnixMilli() / 1000)
 
-		if !job.Run {
+		if job.Run {
 			// add a job to the scheduler
-			if true {
-				fmt.Println("running")
-				fmt.Println("Ms ", nextMs-curMs)
+			fmt.Println("running")
+			fmt.Println("Ms ", nextMs-curMs)
 
-				j, e := s.NewJob(
-					gocron.DurationJob(
-						time.Second*1,
-					),
-					gocron.NewTask(serviceRunner, db, job),
-					//gocron.WithStartAt(
-					//	gocron.WithStartDateTime(start),
-					//),
-					gocron.WithTags(string(job.ID)),
-				)
+			j, e := s.NewJob(
+				gocron.DurationJob(
+					time.Millisecond*100,
+				),
+				gocron.NewTask(serviceRunner, db, job),
+				//gocron.WithStartAt(
+				//	gocron.WithStartDateTime(start),
+				//),
+				gocron.WithTags(string(job.ID)),
+			)
 
-				if j == nil {
-					fmt.Println("Error locating job", e.Error)
-				}
-
-				// each job has a unique id
-				fmt.Println(j.ID().String())
-				fmt.Print(j)
-				job.Uuid = j.ID().String()
-				job.Run = true
-				db.Save(&job)
+			if j == nil {
+				fmt.Println("Error locating job", e.Error)
 			}
+
+			// each job has a unique id
+			fmt.Println(j.ID().String())
+			fmt.Print(j)
+			job.Uuid = j.ID().String()
+			job.Run = true
+			db.Save(&job)
+
 		} else {
 			s.RemoveJob(uuid.MustParse(job.Uuid))
 		}
 		s.Start()
+		fmt.Println("\nScheduler start")
+		select {}
+
+		// when you're done, shut it down
+		//s.Shutdown()
 
 	}
 	// start the scheduler
@@ -238,8 +243,6 @@ func main1(db *gorm.DB) {
 
 loop:
 	for {
-		time.Sleep(time.Second)
-
 		select {
 		case sig := <-chSignal:
 			g.Logger.Infof("signal received: %v", sig)
@@ -281,8 +284,11 @@ func heartbeat2(ctx *macaron.Context, db *gorm.DB) {
 }
 
 func serviceRunner(db *gorm.DB, job models.Job) {
+	var ctx = macaron.Context{}
+	p := &ctx
 	//repeat := rand.Intn(3) + 1
-	g.PluginManagerSwapper.Current().FindPlugin(job.Plugin).InvokeFunc(job.Service, db, job)
+	fmt.Println("Starting job ", job.Plugin, job.Service)
+	g.PluginManagerSwapper.Current().FindPlugin(job.Plugin).InvokeFunc(job.Service, 5, p, db)
 }
 
 func handleTest(ctx *macaron.Context, db *gorm.DB) {

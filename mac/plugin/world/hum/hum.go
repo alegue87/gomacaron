@@ -16,8 +16,8 @@ func Hum(pluginName string, compileTimeString string, repeat int, ctx *macaron.C
 	g.Logger.Infof("<%s.%s> %s. reloadCounter: %v",
 		pluginName, compileTimeString, str, g.PluginManagerSwapper.ReloadCounter())
 
-	res := (ctx).Query("ciao")
+	//res := (ctx).Query("ciao")
 
-	fmt.Println(res)
-	fmt.Print("hum!!??")
+	//fmt.Println(res)
+	fmt.Print("hum!!??....")
 }
