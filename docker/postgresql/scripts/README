@@ -1,0 +1,90 @@
+PostgreSQL Logical Replication
+=====================================
+
+Utility scripts for installing and removing PostgreSQL logical replication.
+
+The latest version of the documentation may be obtained at
+https://www.postgresql.org/docs/current/logical-replication.html
+
+
+Login in compose per esecuzione script di pubblicazione / sottoscrizione :
+
+    docker exec -it moqui-database1 bash
+    docker exec -it moqui-database2 bash
+
+cd /var/lib/postgresql/scripts
+
+se necessario effettuare chmod +x *.sh per rendere eseguibili gli script bash.
+
+
+-- Ripristino db primario --
+
+Con db del primario connesso accedere al container del secondario e droppare sottoscrizione:
+
+    docker exec -it secondario bash
+    cd /var/lib/postgresql/scripts
+    ./postgres-drop-sub.sh
+
+    si dovrebbe ottenere il seguente output:
+
+    Subscription count: 1
+
+    ALTER SUBSCRIPTION
+    ALTER SUBSCRIPTION
+    DROP SUBSCRIPTION
+    Deleted subscriptions: 1
+
+Sul primario da ripristinare droppare la pubblicazione:
+
+    docker exec -it primario bash
+    cd /var/lib/postgres/scripts
+    ./postgres-drop-pub.sh
+
+    l'output dovrebbe essere simile a questo:
+
+    Publication count: 185
+
+    DROP PUBLICATION
+     pg_drop_replication_slot
+    --------------------------
+    (0 rows)
+
+    Deleted publications: 185
+
+sempre sul primario droppare e ricreare db, se alcune connessioni sono attive è necessario utilizzare --force per drop
+
+    dropdb moqui -U moqui
+    createdb moqui -U moqui
+
+quindi ricreare lo schema utilizzando ( viene chiesta la password del db ):
+
+    ./postgres-ini-db-schema.sh primary_host primary_port secondary_port
+
+A questo punto il nuovo db è pronto per ricevere i dati dal secondario ed allinearsi ad esso. Sul primario avviare
+la pubblicazione e sul nuovo secondario (in ripristino) la sottoscrizione:
+
+    ./postgres-init-pub.sh
+
+    e sul secondario:
+
+    ./postgres-ini-sub.sh primary_host primary_port true
+
+Il flag posto a 'true' indica alla sottoscrizione di copiare i dati dal principio ( COPY_DATA = true )
+https://www.postgresql.org/docs/current/sql-createsubscription.html#SQL-CREATESUBSCRIPTION-WITH-COPY-DATA
+
+Nel file di configurazione di nginx è definito il db primario e quello di backup:
+    upstream backend {
+       # hash $remote_addr; # non utilizzabile con backup
+       server moqui-database1:5432 fail_timeout=15s;
+       server moqui-database2:5432 backup;
+    }
+
+dopo effettuato il ripristino basta invertire moqui-database1 con moqui-database2 e riavviare nginx con:
+
+    docker restart nginx-proxy-db
+
+in questo modo il db appena ripristinato diventerà quello di backup e l'altro sarà il nuovo primario.
+
+
+
+
