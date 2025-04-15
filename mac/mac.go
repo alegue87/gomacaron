@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 
 	"github.com/edwingeng/hotswap"
 	"github.com/edwingeng/hotswap/demo/hello/g"
-	"github.com/google/uuid"
 
 	"mac/auth"
 	"net/http"
@@ -94,52 +94,56 @@ func jobManager(db *gorm.DB) {
 
 	// recupera job per l'avvio nello scheduler
 	var jobs []models.Job
-	db.Find(&jobs)
+	for {
+		db.Find(&jobs)
 
-	if len(jobs) > 0 {
-		fmt.Println("jobs total :", len(jobs))
-	}
+		if len(jobs) > 0 {
+			fmt.Println("jobs total :", len(jobs))
+		}
 
-	for _, job := range jobs {
+		for _, job := range jobs {
 
-		fmt.Println("JOB: ", job.Uuid, " start ", job.Run)
+			fmt.Println("JOB: ", job.Uuid, " start ", job.Run)
 
-		/*
+			/*
 
-			gocron.CronJob, "* 0 0 ? * * *", true),
+				gocron.CronJob, "* 0 0 ? * * *", true),
 
 
-			start := time.Date(2025, 1, 17, 19, 45, 0, 0, time.UTC)
-		*/
+				start := time.Date(2025, 1, 17, 19, 45, 0, 0, time.UTC)
+			*/
 
-		//start := time.Date(2025, 01, 20, 17, 56, 01, 01, time.Local)
-		//fmt.Println("localtime: ", time.Now())
-		//fmt.Println("Starting at: ", start)
-		curMs := int(time.Now().UnixMilli() / 1000)
-		//time.Sleep(time.Second)
-		nextMs := int(time.Now().UnixMilli() / 1000)
+			//start := time.Date(2025, 01, 20, 17, 56, 01, 01, time.Local)
+			//fmt.Println("localtime: ", time.Now())
+			//fmt.Println("Starting at: ", start)
+			//curMs := int(time.Now().UnixMilli() / 1000)
+			//time.Sleep(time.Second)
+			//nextMs := int(time.Now().UnixMilli() / 1000)
 
-		if !job.Run {
-			// add a job to the scheduler
-			if true {
-				fmt.Println("running")
-				fmt.Println("Ms ", nextMs-curMs)
+			if !job.Run {
+				// add a job to the scheduler
+				fmt.Println("running jobId: " + fmt.Sprint(job.ID) + " at " + job.Cronsec + " ms")
+				//fmt.Println("Ms ", nextMs-curMs)
 
-				var j gocron.Job
+				cronsec, err := strconv.Atoi(job.Cronsec)
+				if err != nil {
+					// ... handle error
+					panic(err)
+				}
+
+				var j gocron.Job = nil
 				var e error
 				j, e = s.NewJob(
-					gocron.DurationJob(
-						time.Millisecond*5,
-					),
+					gocron.DurationJob(time.Millisecond*time.Duration(cronsec)),
 					gocron.NewTask(serviceRunner, db, job),
 					//gocron.WithStartAt(
 					//	gocron.WithStartDateTime(start),
 					//),
-					gocron.WithTags(string(job.ID)),
+					gocron.WithTags(fmt.Sprint(job.ID)),
 				)
 
 				if j == nil || e != nil {
-					fmt.Println("Error locating job", e.Error)
+					fmt.Println("Error locating job", e.Error())
 				}
 
 				// each job has a unique id
@@ -147,16 +151,17 @@ func jobManager(db *gorm.DB) {
 				fmt.Print(j)
 				job.Uuid = j.ID().String()
 				job.Run = true
-				//db.Save(&job)
+				db.Save(&job)
+
 			}
-		} else {
-			s.RemoveJob(uuid.MustParse(job.Uuid))
+			/*else {
+				s.RemoveJob(uuid.MustParse(job.Uuid))
+			}*/
+
 		}
 
-	}
-
-	for {
-		time.Sleep(time.Second * 1)
+		// manager delay
+		time.Sleep(time.Second * 10)
 	}
 }
 
