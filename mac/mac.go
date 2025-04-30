@@ -30,7 +30,15 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"gorm.io/gorm"
+
+	"mac/cors"
 )
+
+type Person struct {
+	Name  string `json:"name"`
+	Age   uint8  `json:"age"`
+	Email string `json:"email"`
+}
 
 func init() {
 	rand.Seed(time.Now().Unix())
@@ -38,7 +46,7 @@ func init() {
 
 func main() {
 	fmt.Println("Connecting to db....")
-	dsn := "host=localhost user=moqui password=moqui dbname=gorm port=5432 sslmode=disable TimeZone=Europe/Rome"
+	dsn := "host=localhost user=moqui password=moqui dbname=gorm port=5433 sslmode=disable TimeZone=Europe/Rome"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	//db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
@@ -55,6 +63,15 @@ func main() {
 
 	m := macaron.Classic()
 	m.Map(db)
+
+	options := cors.Options{AllowDomain: []string{"*"}}
+	handler := cors.CORS(options)
+	m.Handlers(handler)
+
+	m.Use(macaron.Static("../ui/dist"))
+	m.Use(macaron.Static("../ui/dist/static"))
+	m.Use(macaron.Renderer())
+
 	fmt.Println("Registering routes...")
 	m.Get("/", func() string {
 		return "Hello world!"
@@ -66,7 +83,16 @@ func main() {
 	m.Get("/Test1", handleTest1)
 	m.Get("/Test2", handleTest2)
 
-	go http.ListenAndServe(":8080", m)
+	m.Get("/person", func(ctx *macaron.Context, db *gorm.DB) {
+		p := Person{
+			Name:  "Nikola",
+			Age:   37,
+			Email: "nikola@tesla.genius",
+		}
+		ctx.JSON(200, &p)
+	})
+
+	go http.ListenAndServe(":8888", m)
 	go m.Run()
 	fmt.Println("Ready macaron")
 
