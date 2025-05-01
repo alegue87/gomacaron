@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+source conf.sh
+
 [[ "$TRACE" ]] && set -x
 OWD=`pwd`
 pushd `dirname "$0"` > /dev/null
@@ -47,7 +49,7 @@ PROGRAM_EXE="bin/$xOS/$PROGRAM"
 printf "Building $PROGRAM...\n"
 echo
 
-CGO_ENABLED=1 GOARCH=amd64 go build -trimpath -o "$PROGRAM_BUILD_OUTPUT_DIR"
+CGO_ENABLED=1 GOARCH=amd64 go build -trimpath -o "$PROGRAM_BUILD_OUTPUT_DIR" -buildvcs=false
 [[ $? -ne 0 ]] && exit 1
 
 plugin/$PLUGIN1/build.sh

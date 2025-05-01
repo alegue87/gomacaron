@@ -44,4 +44,4 @@ mkdir -p "../../bin/$xOS/plugin/$PROGRAM"
 
 compileTimeString="`date +%s`-$RANDOM"
 go run ../../../hotswap build "$@" . "../../bin/$xOS/plugin/$PROGRAM" \
-    -- -ldflags "-X main.CompileTimeString=$compileTimeString"
+    -- -ldflags "-X main.CompileTimeString=$compileTimeString" -buildvcs=false
