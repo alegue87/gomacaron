@@ -6,7 +6,7 @@ import DashboardPage from '../pages/DashboardPage.vue'
 import DetailsPage from '../pages/DetailsPage.vue'
 import ParametersPage from '../pages/ParametersPage.vue'
 
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 import { useAuthStore } from '../store'
 import type { RouteRecordRaw } from 'vue-router';
@@ -37,7 +37,7 @@ const routes = [
   
 // Create Router
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(),
   routes: routes as RouteRecordRaw[],
 })
   
