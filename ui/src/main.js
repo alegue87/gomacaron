@@ -1,5 +1,5 @@
 import { createApp, markRaw } from 'vue'
-import { Quasar } from 'quasar'
+import { Quasar, Notify } from 'quasar'
 import App from './App.vue'
 import ApiService from './services/api.service'
 import { createPinia } from 'pinia'
@@ -37,11 +37,10 @@ myApp
 
 
 const quasar = myApp.use(Quasar, {
-    plugins: {}, // import Quasar plugins and add here
+    plugins: {Notify}, // import Quasar plugins and add here
   })
   
 myApp.mount('#app') // Html root element
-
 
 export default myApp
 export { pinia, quasar } 
